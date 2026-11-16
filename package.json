@@ -1,5 +1,11 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "web-crawler",
+    "description": "Frontend assets for the business lead and job listing crawler.",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/codewarrior4/web-crawler.git"
+    },
     "private": true,
     "type": "module",
     "scripts": {
