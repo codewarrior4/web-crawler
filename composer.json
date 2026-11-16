@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "codewarrior4/web-crawler",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A Laravel application for discovering business leads and job listings.",
     "keywords": [
         "laravel",
-        "framework"
+        "web-crawler",
+        "business-leads",
+        "job-listings"
     ],
     "license": "MIT",
     "require": {
