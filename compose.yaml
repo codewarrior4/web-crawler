@@ -1,0 +1,82 @@
+# Local development only. Run: docker compose up --build -d
+x-app: &app
+  image: web-crawler-local
+  build: .
+  init: true
+  env_file: .env
+  environment:
+    APP_ENV: local
+    APP_URL: http://localhost:8080
+    DB_URL: ''
+    DB_CONNECTION: mysql
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_DATABASE: web_crawler
+    DB_USERNAME: crawler
+    DB_PASSWORD: local-crawler-password
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_PASSWORD: 'null'
+    CACHE_STORE: redis
+    SESSION_DRIVER: redis
+    QUEUE_CONNECTION: redis
+  volumes:
+    - app-storage:/var/www/html/storage
+
+services:
+  app:
+    <<: *app
+    ports:
+      - '127.0.0.1:8080:8000'
+    command: ['sh', '-c', 'php artisan migrate --force --no-interaction && exec php artisan serve --host=0.0.0.0 --port=8000 --no-reload']
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'php', '-r', 'exit(@file_get_contents("http://127.0.0.1:8000/up") === false ? 1 : 0);']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: ['php', 'artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=90']
+    stop_grace_period: 100s
+    depends_on:
+      app:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: web_crawler
+      MYSQL_USER: crawler
+      MYSQL_PASSWORD: local-crawler-password
+      MYSQL_ROOT_PASSWORD: local-root-password
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  app-storage:
+  mysql-data:
+  redis-data:
