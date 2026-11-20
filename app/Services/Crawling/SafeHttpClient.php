@@ -27,7 +27,7 @@ class SafeHttpClient
                 $response = $this->request($destination, $delay, $deadline, $robots);
             } catch (ConnectionException $exception) {
                 if ($attempt === config('crawler.max_retries')) {
-                    throw new FetchException('Connection failed after bounded retries.', previous: $exception);
+                    throw new FetchException('Connection failed after bounded retries.', previous: $exception, retryAfter: $robots ? 300 : null);
                 }
 
                 continue;
@@ -38,7 +38,7 @@ class SafeHttpClient
             }
 
             if ($attempt === config('crawler.max_retries')) {
-                throw new FetchException('Remote rate limit or server error persisted after bounded retries.');
+                throw new FetchException('Remote rate limit or server error persisted after bounded retries.', retryAfter: $robots || in_array($response->status(), [429, 503], true) ? 300 : null);
             }
         }
 
@@ -56,7 +56,7 @@ class SafeHttpClient
         $lock = Cache::lock($key.':lock', 120);
 
         if (! $lock->get()) {
-            throw new FetchException('Another request is using this hostname; retry later.');
+            throw new FetchException('Another request is using this hostname; retry later.', retryAfter: 5);
         }
 
         $started = false;
@@ -68,7 +68,7 @@ class SafeHttpClient
             $wait = max(0, $state['next_at'] - $this->time(), $state['finished_at'] + $delay - $this->time());
 
             if ($wait > config('crawler.max_wait') || $this->time() + $wait >= $deadline) {
-                throw new FetchException('Host delay exceeds this fetch budget; retry later.');
+                throw new FetchException('Host delay exceeds this fetch budget; retry later.', retryAfter: (int) min(86400, max(5, ceil($wait))));
             }
 
             if ($wait > 0) {

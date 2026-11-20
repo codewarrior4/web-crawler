@@ -22,3 +22,4 @@ bootstrap/cache/*.php
 .DS_Store
 .phpunit.result.cache
 .phpunit.cache
+WORK_PLAN.md

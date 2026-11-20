@@ -12,4 +12,8 @@ return [
     'max_retries' => 2,
     'request_delay' => 2,
     'max_wait' => 60,
+    'max_pending_urls' => 100,
+    'run_budget' => 600,
+    'retention_days' => 30,
+    'record_retention_days' => 180,
 ];

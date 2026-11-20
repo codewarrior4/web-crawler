@@ -43,8 +43,15 @@ services:
 
   worker:
     <<: *app
-    command: ['php', 'artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=90']
-    stop_grace_period: 100s
+    command: ['php', 'artisan', 'queue:work', '--sleep=3', '--tries=3', '--timeout=150']
+    stop_grace_period: 160s
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: ['php', 'artisan', 'schedule:work', '--no-interaction']
     depends_on:
       app:
         condition: service_healthy

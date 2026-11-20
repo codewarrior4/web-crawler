@@ -14,13 +14,13 @@ class PageFetcher
     public function __construct(private PublicUrlResolver $resolver, private SafeHttpClient $http) {}
 
     /** @return array{url: string, status: int, html: string} */
-    public function fetch(CrawlTarget $target, ?string $url = null): array
+    public function fetch(CrawlTarget $target, ?string $url = null, ?float $deadline = null): array
     {
         if (! $target->is_enabled) {
             throw new FetchException('Crawl target is disabled.');
         }
 
-        $deadline = now()->getTimestampMs() / 1000 + config('crawler.fetch_budget');
+        $deadline = min($deadline ?? INF, now()->getTimestampMs() / 1000 + config('crawler.fetch_budget'));
         $starting = $this->resolver->resolve($target->url);
         $destination = $this->resolver->resolve($url ?? $starting['url'], $starting['host']);
         $url = $destination['url'];
@@ -36,7 +36,7 @@ class PageFetcher
             }
 
             if ($policy->delay() > config('crawler.max_wait')) {
-                throw new FetchException('Robots crawl-delay exceeds this fetch budget; fetching paused.');
+                throw new FetchException('Robots crawl-delay exceeds this fetch budget; fetching paused.', retryAfter: (int) min(86400, ceil($policy->delay())));
             }
 
             $response = $this->http->get($url, $starting['host'], $policy->delay(), $deadline);
@@ -90,7 +90,7 @@ class PageFetcher
             }
 
             if ($response->status() !== 200) {
-                throw new FetchException('Robots rules are unavailable; fetching paused.');
+                throw new FetchException('Robots rules are unavailable; fetching paused.', retryAfter: 300);
             }
 
             $type = strtolower(trim(explode(';', $response->header('Content-Type'))[0]));
